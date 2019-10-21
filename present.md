@@ -2,13 +2,14 @@
 
 The initial 5 row sample we received contained 234 columns. This contained demographic data, the partner program the client utilizes, and a number of basic, clinical test results. All were grouped by date into blocks of 90 days. We requested more granular data, daily if possible, and that our final dataset include any and all clinical data available in addition to what was originally given. 
 
-We planned to use daily data for each patient as sequences to be consumed by an LSTM or similar model, perhaps incorporating reinforcement learning as well. 
+We planned to use daily data for each patient as sequences to be consumed by an LSTM or similar model, perhaps incorporating reinforcement learning as well. Automatic daily updates with new clinical data would feed into our deployed model to give updated predictions.
+Ideally, we would be able to incorporate into the partner's existing electronic health record (EHR) system. Clinicians would otherwise need to input data into our system as well as the EHR.
 
 We were also interested in including clinician notes as our research suggested that many risk factors for hospitalization, like impending job loss, homelessness, and other socioeconomic factors, are rarely included in tabular data, but often appear in dictated or writen notes. Notes would be subject to natural language processing for topic modeling and added to other sequential, daily data. 
 
 Unfortunately our partners were unable to successful anonymize the notes and did not engage with our offers to help them do so. In addition we did not receive more than our sample data for over 4 weeks.
 
-In the end we received 15 million rows of daily data with the same columns we received initially. Below we describe our process of data exploration.
+In the end we received 15 million rows of daily data with the same columns we received in our sample. Below we describe our process of data exploration in a Jupyter Notebook.
 
 Upgrade libraries.
 
@@ -34,7 +35,7 @@ from d_types import dtypes
 import s3fs
 ```
 
-Confirm client
+Confirm Dask client.
 
 ```python
 client = Client()
@@ -1848,25 +1849,21 @@ admins.compute()
     Name: Admissions, dtype: int64
 
 
-That is not a lot of hospitalizations.
-This is true needle-in-a-haystack territory. It could be doable, but we'll need robust data to do it. As I mentioned above, I'm concerned that we're no where close to having the kind of data we'd need to make a prediction like an impending hospitalization.
 
+#### This isn't exactly needle-in-a-haystack territory. It's probably doable, but we'll need robust data to do it. As I mentioned above, I'm concerned that we don't have the kind of data we need to make a prediction like an impending hospitalization.
+
+We'll take a look at some individual client timelines and try to get a better understanding of the changes that occur.
 
 To make things faster we'll get only what we need to isolate patients who have been hospitalized.
-
 
 ```python
 df1 = df[['_Date', 'Clientid', 'Admissions']]
 df1 = df1.dropna()
 ```
 
-
 ```python
 df1.head()
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -1927,8 +1924,6 @@ df1.head()
 </div>
 
 
-
-
 ```python
 df1 = client.persist(df1)
 df1 = df1.compute()
@@ -1939,15 +1934,8 @@ Check for null values. Dask doesn't seem to like them at all.
 
 ```python
 df2 = df1.isna().sum()
-```
-
-
-```python
 df2
 ```
-
-
-
 
     _Date         0
     Clientid      0
@@ -1955,8 +1943,7 @@ df2
     dtype: int64
 
 
-
-Filter for hopsitalized patients.
+Filter for hospitalized patients.
 
 
 ```python
@@ -1964,9 +1951,6 @@ hosp_df = df1[df1['Admissions'] == 1.0]
 hosp_df = hosp_df.reset_index(drop=True)
 hosp_df.head()
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -2027,7 +2011,7 @@ hosp_df.head()
 </div>
 
 
-Get list of `Clientid`s of hospitalized pts and filter whole dataset to include only those patients.
+Get list of `Clientid`s of hospitalized pts and filter the whole dataset to get a dataframe of only those patients.
 
 
 ```python
@@ -2037,8 +2021,6 @@ hosp_clients_df = client.persist(hosp_clients_df)
 hosp_clients_df = hosp_clients_df.compute()
 hosp_clients_df.head()
 ```
-
-
 
 
 <div>
@@ -3510,22 +3492,15 @@ hosp_clients_df.head()
 </div>
 
 
-
-
 ```python
 hosp_clients_df.shape
 ```
 
-
-
-
     (366393, 238)
 
 
-
-
-Store dataframe for each client in a dictionary.
-Each key will be the clientid.
+To separate our data into timelines for each client, we store a dataframe for each client in a dictionary.
+Each key will be a `Clientid`.
 Each value will be a time series indexed dataframe for that client.
 
 
@@ -3536,7 +3511,7 @@ hosp_clients_dict = {clientid: hosp_clients_df[hosp_clients_df['Clientid'] == cl
 
 
 
-I have a hunch that hardly any of these columns will change for the time period we have available. The function below counts the number of columns that have any change whatsoever for a client.
+I have a hunch that hardly any of these columns will change for the time period we have available. The function below counts the number of columns that have any change whatsoever for one client.
 
 
 ```python
@@ -3556,7 +3531,7 @@ def total_changes(df):
     return sum(sums)
 ```
 
-Get total number of columns containing more than one value for all clients by summing the total number of columns with changes for each client.
+Get the total number of columns containing more than one value for all clients by summing the total number of columns with changes for each client.
 
 
 ```python
@@ -3569,7 +3544,7 @@ sum(changes)
 
 
 
-Total columns with multiple values per client.
+Find the average number of columns with multiple values.
 
 
 ```python
@@ -3583,10 +3558,11 @@ sum(changes) / len(changes)
 
 
 
-There is very little variance. Too little. For the average client, not even one variable, out of 233, will change for the entire period under consideration. We can't make a prediction if we don't know about any changes. 
+There is very little variation. Too little. For the average client, not even one variable, out of 237, will change for the entire period under consideration. We can't make a prediction if we don't know about any changes. 
 
 As stated above, to predict a rare event like hospitalization, we need very robust data and this doesn't cut it.
 
-Unfortunately, after the long wait for the data and a steep learning curve for using big data tools like AWS and Dask, we were nearly six weeks into labs before we fully realized how lacking our data set truly is. Perhaps others may follow if our partner is able to create a richer dataset.
+Unfortunately, after the long wait for the data and a steeper than anticipated learning curve for using big data tools like AWS and Dask, we were nearly six weeks into labs before we fully realized how lacking our data set truly is. 
+This is a project worth doing, hopefully others will be able to help make it happen if our partner is able to create a richer dataset.
 
 Thanks for listening!
