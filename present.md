@@ -1,15 +1,26 @@
 # Exploration of Valley Behavioral Health dataset.
 
-The initial 5 row sample we received contained 234 columns. This contained demographic data, the partner program the client utilizes, and a number of basic, clinical test results. All were grouped by date into blocks of 90 days. We requested more granular data, daily if possible, and that our final dataset include any and all clinical data available in addition to what was originally given. 
+The initial 5 row sample we received contained 234 columns. This contained demographic data, the partner program the 
+client utilizes, and a number of basic, clinical test results. All were grouped by date into blocks of 90 days. We 
+requested more granular data, daily if possible, and that our final dataset include any and all clinical data available 
+in addition to what was originally given. 
 
-We planned to use daily data for each patient as sequences to be consumed by an LSTM or similar model, perhaps incorporating reinforcement learning as well. Automatic daily updates with new clinical data would feed into our deployed model to give updated predictions.
-Ideally, we would be able to incorporate into the partner's existing electronic health record (EHR) system. Clinicians would otherwise need to input data into our system as well as the EHR.
+We planned to use daily data for each patient as sequences to be consumed by an LSTM or similar model, perhaps 
+incorporating reinforcement learning as well. Automatic daily updates with new clinical data would feed into our 
+deployed model to give updated predictions. Ideally, we would be able to incorporate our model into the partner's 
+existing electronic health record (EHR) system. Clinicians would otherwise need to input data into our system as well 
+as the EHR.
 
-We were also interested in including clinician notes as our research suggested that many risk factors for hospitalization, like impending job loss, homelessness, and other socioeconomic factors, are rarely included in tabular data, but often appear in dictated or writen notes. Notes would be subject to natural language processing for topic modeling and added to other sequential, daily data. 
+We were also interested in including clinician notes as our research suggested that many risk factors for 
+hospitalization, like impending job loss, homelessness, and other socioeconomic factors, are rarely included in 
+tabular data, but often appear in dictated or writen notes. Notes would be subject to natural language processing for 
+topic modeling and added to other sequential, daily data. 
 
-Unfortunately our partners were unable to successful anonymize the notes and did not engage with our offers to help them do so. In addition we did not receive more than our sample data for over 4 weeks.
+Unfortunately our partners were unable to successful anonymize the notes and did not engage with our offers to help 
+them do so. In addition we did not receive more than our sample data for over 4 weeks.
 
-In the end we received 15 million rows of daily data with the same columns we received in our sample. Below we describe our process of data exploration in a Jupyter Notebook.
+In the end we received 15 million rows of daily data with the same columns we received in our sample. Below we 
+describe our process of data exploration in a Jupyter Notebook.
 
 Upgrade libraries.
 
@@ -70,6 +81,7 @@ pd.set_option('display.max_rows', 250)
 ```
 
 Import to Dask DataFrame.
+
 ```python
 role = get_execution_role()
 
@@ -94,23 +106,7 @@ Confirm import.
 df.head()
 ```
 
-
-
-
 <div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1818,11 +1814,14 @@ df2.compute()
 
 
 
-We have a lot of demographic data, a number of drug tests, a basic metabolic panel, complete blood count, and some diagnoses.
+We have a lot of demographic data, a number of drug tests, a basic metabolic panel, complete blood count, and some 
+diagnoses.
 
-We may have enough to create a model that could recommend more in depth screening for a number of conditions from this information, by utilizing other, large datasets with known outcomes. 
+We may have enough to create a model that could recommend more in depth screening for a number of conditions from this 
+information, by utilizing other, large datasets with known outcomes. 
 
-For the problem at hand, however, I'm concerned that these values do not change enough over short periods of time to predict something like an impending hospitalization. We will take a closer look to determine if this is the case.
+For the problem at hand, however, I'm concerned that these values do not change enough over short periods of time to 
+predict something like an impending hospitalization. We will take a closer look to determine if this is the case.
 
 Find number of unique clients.
 
@@ -1850,9 +1849,11 @@ admins.compute()
 
 
 
-#### This isn't exactly needle-in-a-haystack territory. It's probably doable, but we'll need robust data to do it. As I mentioned above, I'm concerned that we don't have the kind of data we need to make a prediction like an impending hospitalization.
+This isn't exactly needle-in-a-haystack territory. It's probably doable, but we'll need robust data to do it. As I 
+mentioned above, I'm concerned that we don't have the kind of data we need to make a prediction like an impending 
+hospitalization.
 
-We'll take a look at some individual client timelines and try to get a better understanding of the changes that occur.
+### Next, we'll take a look at some individual client timelines and try to get a better understanding of the changes that occur.
 
 To make things faster we'll get only what we need to isolate patients who have been hospitalized.
 
@@ -1866,19 +1867,6 @@ df1.head()
 ```
 
 <div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1953,19 +1941,6 @@ hosp_df.head()
 ```
 
 <div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2024,19 +1999,6 @@ hosp_clients_df.head()
 
 
 <div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -3500,8 +3462,9 @@ hosp_clients_df.shape
 
 
 To separate our data into timelines for each client, we store a dataframe for each client in a dictionary.
-Each key will be a `Clientid`.
-Each value will be a time series indexed dataframe for that client.
+- Each key will be a `Clientid`.
+- Each value will be a time series indexed dataframe for that 
+client.
 
 
 ```python
@@ -3511,7 +3474,8 @@ hosp_clients_dict = {clientid: hosp_clients_df[hosp_clients_df['Clientid'] == cl
 
 
 
-I have a hunch that hardly any of these columns will change for the time period we have available. The function below counts the number of columns that have any change whatsoever for one client.
+I have a hunch that hardly any of these columns will change for the time period we have available. The function below 
+counts the number of columns that have any change whatsoever for one client.
 
 
 ```python
@@ -3531,7 +3495,9 @@ def total_changes(df):
     return sum(sums)
 ```
 
-Get the total number of columns containing more than one value for all clients by summing the total number of columns with changes for each client.
+Get the total number of columns containing more than one value 
+for all clients by summing the total number of columns with 
+changes for each client.
 
 
 ```python
@@ -3558,11 +3524,14 @@ sum(changes) / len(changes)
 
 
 
-There is very little variation. Too little. For the average client, not even one variable, out of 237, will change for the entire period under consideration. We can't make a prediction if we don't know about any changes. 
+There is very little variation. Too little. For the average client, not even one variable, out of 237, will change for 
+the entire period under consideration. We can't make a prediction if we don't know about any changes. 
 
 As stated above, to predict a rare event like hospitalization, we need very robust data and this doesn't cut it.
 
-Unfortunately, after the long wait for the data and a steeper than anticipated learning curve for using big data tools like AWS and Dask, we were nearly six weeks into labs before we fully realized how lacking our data set truly is. 
-This is a project worth doing, hopefully others will be able to help make it happen if our partner is able to create a richer dataset.
+Unfortunately, after the long wait for the data and a steeper than anticipated learning curve for using big data tools 
+like AWS and Dask, we were nearly six weeks into labs before we fully realized how lacking our data set truly is. 
+This is a project worth doing, hopefully others will be able to help make it happen if our partner is able to create a 
+richer dataset.
 
 Thanks for listening!
