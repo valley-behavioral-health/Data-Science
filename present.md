@@ -1595,8 +1595,6 @@ Now we can get the total number of columns containing more than one value per cl
 
 ```python
 changes = [total_changes(hosp_clients_dict[client]) for client in hosp_clients]
-
-```python
 sum(changes) / len(changes)
 ```
 
